@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dispatch — Client Acquisition Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1B1F24; --board:#20252C; --panel:#262C34; --panel-alt:#2D333D; --border:#3A414B;
+    --text:#E8E6E1; --text-dim:#9BA3AD; --amber:#F5A623; --teal:#3E8E9E; --green:#4CAF6D; --red:#E4572E;
+    --paper:#F0EAD9; --paper-ink:#2B2620; --paper-ink-dim:#6B6455;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  .board-wrap{min-height:100vh;}
+
+  .header{background:var(--board);border-bottom:3px solid var(--amber);padding:22px 28px 18px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;color:var(--amber);text-transform:uppercase;margin:0 0 6px;}
+  .title-row{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+  h1{font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:.03em;margin:0;line-height:1;color:var(--text);}
+  .header-btns{display:flex;gap:10px;align-items:center;}
+  .new-lead-btn{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.05em;background:var(--amber);color:#1B1F24;border:none;padding:11px 22px;border-radius:3px;cursor:pointer;transition:transform .12s ease, background .15s ease;}
+  .new-lead-btn:hover{background:#ffb941; transform:translateY(-1px);}
+  .new-lead-btn:active{transform:translateY(0);}
+  .icon-btn{background:var(--panel);border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:16px;width:40px;height:40px;border-radius:3px;cursor:pointer;}
+  .icon-btn:hover{color:var(--text);border-color:var(--text-dim);}
+  .conn-status{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-dim);margin:8px 0 0;}
+  .conn-status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:6px;}
+  .conn-status.connected .dot{background:var(--green);}
+
+  .connect-screen{max-width:600px;margin:60px auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:32px;}
+  .connect-screen h2{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--amber);margin:0 0 10px;}
+  .connect-screen p{font-family:'Inter',sans-serif;font-size:13.5px;color:var(--text-dim);line-height:1.6;margin:0 0 16px;}
+  .connect-screen code{background:var(--panel-alt);padding:2px 6px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--amber);}
+  .connect-screen input{width:100%;background:var(--panel-alt);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:10px 12px;border-radius:4px;margin-bottom:12px;}
+  .connect-screen .err{color:var(--red);font-family:'IBM Plex Mono',monospace;font-size:11.5px;margin-top:10px;display:none;}
+
+  .ticker{display:flex;background:var(--panel);border-bottom:1px solid var(--border);overflow-x:auto;}
+  .stat{flex:1;min-width:150px;padding:14px 20px;border-right:1px dashed var(--border);}
+  .stat:last-child{border-right:none;}
+  .stat-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 4px;}
+  .stat-value{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--amber);margin:0;}
+  .stat-value.teal{color:var(--teal);}
+  .stat-value.green{color:var(--green);}
+
+  .filter-bar{display:flex;gap:10px;padding:14px 28px;background:var(--board);border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;}
+  .filter-bar select, .filter-bar input[type="text"]{background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;border-radius:3px;}
+  .filter-bar input[type="text"]{min-width:200px;}
+  .filter-bar .reset-link{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);cursor:pointer;text-decoration:underline;background:none;border:none;}
+  .filter-bar .reset-link:hover{color:var(--red);}
+
+  .columns{display:grid;grid-template-columns:repeat(7,minmax(220px,1fr));gap:14px;padding:20px 28px 40px;overflow-x:auto;align-items:start;}
+  .column{background:var(--board);border-radius:6px;min-height:120px;}
+  .column-head{display:flex;justify-content:space-between;align-items:baseline;padding:10px 4px 12px;border-bottom:2px solid var(--panel-alt);margin-bottom:12px;position:relative;}
+  .column-head::before{content:"";position:absolute;left:2px; top:-6px;width:8px; height:8px;border-radius:50%;background:var(--border);box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
+  .column-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.06em;color:var(--text-dim);}
+  .column[data-stage="won"] .column-title{color:var(--green);}
+  .column[data-stage="lost"] .column-title{color:var(--red);}
+  .column-count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);background:var(--panel);padding:2px 7px;border-radius:10px;}
+  .card-stack{display:flex;flex-direction:column;gap:12px;min-height:40px;}
+
+  .ticket{background:var(--paper);color:var(--paper-ink);border-radius:2px;padding:14px 14px 12px;position:relative;box-shadow:0 3px 8px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.05) inset;cursor:pointer;transform:rotate(var(--tilt,0deg));transition:transform .15s ease, box-shadow .15s ease;border:1px dashed #c9bfa2;}
+  .ticket:hover{transform:rotate(0deg) translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.45);}
+  .ticket::before, .ticket::after{content:"";position:absolute;width:9px; height:9px;border-radius:50%;background:var(--board);top:50%;transform:translateY(-50%);}
+  .ticket::before{left:-5px;}
+  .ticket::after{right:-5px;}
+  .ticket-no{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--paper-ink-dim);margin:0 0 4px;}
+  .ticket-biz{font-family:'Inter',sans-serif;font-weight:700;font-size:14.5px;line-height:1.25;margin:0 0 2px;}
+  .ticket-sub{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--paper-ink-dim);margin:0 0 8px;}
+  .ticket-divider{border:none;border-top:1px dashed #c9bfa2;margin:8px 0;}
+  .ticket-row{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10.5px;margin:3px 0;}
+  .ticket-row .k{color:var(--paper-ink-dim);}
+  .ticket-row .v{color:var(--paper-ink); font-weight:600; text-align:right;}
+  .ticket-row .v.overdue{color:#B5361F;}
+  .ticket-row .v.due-today{color:#9A6B00;}
+  .stamp{display:inline-block;margin-top:9px;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.08em;padding:3px 8px;border:2px solid currentColor;border-radius:3px;transform:rotate(-3deg);opacity:.85;}
+  .stamp.prospect{color:#7A6A3F;}
+  .stamp.contacted{color:#2E6B8A;}
+  .stamp.replied{color:#8A5E2E;}
+  .stamp.call_booked{color:#3E7A4C;}
+  .stamp.proposal_sent{color:#8A2E6B;}
+  .stamp.won{color:#2E8A47;}
+  .stamp.lost{color:#B5361F;}
+
+  .empty-slot{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-dim);text-align:center;padding:18px 6px;border:1px dashed var(--border);border-radius:4px;}
+
+  .modal-overlay{position:fixed; inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:100;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:6px;width:100%;max-width:520px;padding:24px;animation:pop .15s ease;}
+  @keyframes pop{from{transform:translateY(6px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal h2{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.04em;margin:0 0 4px;color:var(--amber);}
+  .modal .modal-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);margin:0 0 18px;}
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+  .field.full{grid-column:1 / -1;}
+  .field label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);}
+  .field input, .field select, .field textarea{background:var(--panel-alt);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:13.5px;padding:9px 10px;border-radius:4px;width:100%;}
+  .field textarea{resize:vertical;min-height:60px;font-family:'Inter',sans-serif;}
+  .field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px;flex-wrap:wrap;}
+  .btn{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.04em;padding:9px 18px;border-radius:4px;border:none;cursor:pointer;}
+  .btn-primary{background:var(--amber);color:#1B1F24;}
+  .btn-primary:hover{background:#ffb941;}
+  .btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--text-dim);}
+  .btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);}
+  .btn-danger:hover{background:rgba(228,87,46,.12);}
+  .modal-left{display:flex;gap:8px;}
+
+  .toast{position:fixed;bottom:20px; left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel-alt);border:1px solid var(--amber);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:10px 18px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;z-index:200;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.error{border-color:var(--red);}
+  .loading-note{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);padding:14px 28px;}
+
+  @media (max-width:900px){
+    .columns{grid-template-columns:1fr;}
+    .field-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="board-wrap">
+  <div class="header">
+    <p class="eyebrow">Shohidul Walid Consulting · Local &amp; SaaS SEO</p>
+    <div class="title-row">
+      <h1>Dispatch — Client Acquisition Board</h1>
+      <div class="header-btns">
+        <button class="icon-btn" onclick="openSettings()" title="Connection settings">⚙</button>
+        <button class="new-lead-btn" id="newLeadBtn" onclick="openModal()" style="display:none;">+ New Lead</button>
+      </div>
+    </div>
+    <p class="conn-status" id="connStatus"><span class="dot"></span><span id="connText">Not connected</span></p>
+  </div>
+
+  <div id="ticker" class="ticker" style="display:none;"></div>
+
+  <div class="filter-bar" id="filterBar" style="display:none;">
+    <select id="filterMarket" onchange="renderBoard()"><option value="">All markets</option></select>
+    <select id="filterNiche" onchange="renderBoard()"><option value="">All niches</option></select>
+    <input type="text" id="filterSearch" placeholder="Search business or contact..." oninput="renderBoard()">
+    <button class="reset-link" onclick="refreshFromSheet()">↻ Refresh</button>
+  </div>
+
+  <div id="connectScreen" class="connect-screen">
+    <h2>Connect your Google Sheet</h2>
+    <p>This board reads and writes leads directly to a Google Sheet, so it stays synced across every device you open it on — and you can also view/edit the raw data straight in Sheets any time.</p>
+    <p>Follow <code>setup-instructions.md</code> to deploy the Apps Script Web App (about 5 minutes, one time). Then paste the Web App URL below.</p>
+    <input type="text" id="webappUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="btn btn-primary" onclick="connectWebApp()">Connect</button>
+    <p class="err" id="connectErr">Couldn't reach that URL. Double check it was deployed with "Anyone" access and the /exec link was copied in full.</p>
+    <p style="margin-top:16px;font-size:11.5px;">Tip: once you host this file (see hosting-instructions.md), paste the URL into the <code>CONFIG.WEBAPP_URL</code> line near the top of the &lt;script&gt; before uploading, so everyone who opens the link is connected automatically — no one has to paste anything.</p>
+  </div>
+
+  <div id="loadingNote" class="loading-note" style="display:none;">Loading board…</div>
+  <div class="columns" id="columns" style="display:none;"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">New Lead</h2>
+    <p class="modal-sub" id="modalTicketNo"></p>
+    <form id="leadForm" onsubmit="return false;">
+      <div class="field-grid">
+        <div class="field full">
+          <label for="f-business">Business name</label>
+          <input type="text" id="f-business" required>
+        </div>
+        <div class="field">
+          <label for="f-niche">Niche</label>
+          <select id="f-niche">
+            <option>HVAC</option>
+            <option>Plumbing</option>
+            <option>Roofing</option>
+            <option>Med Spa</option>
+            <option>Hair Salon</option>
+            <option>Home Services — Other</option>
+            <option>SaaS</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-market">Market</label>
+          <input type="text" id="f-market" placeholder="e.g. DFW, Phoenix, Tampa">
+        </div>
+        <div class="field">
+          <label for="f-contact">Contact name</label>
+          <input type="text" id="f-contact">
+        </div>
+        <div class="field">
+          <label for="f-contactinfo">Email / phone</label>
+          <input type="text" id="f-contactinfo">
+        </div>
+        <div class="field">
+          <label for="f-channel">Outreach channel</label>
+          <select id="f-channel">
+            <option>Cold Email</option>
+            <option>LinkedIn</option>
+            <option>Call</option>
+            <option>Referral</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-stage">Stage</label>
+          <select id="f-stage">
+            <option value="prospect">Prospect</option>
+            <option value="contacted">Contacted</option>
+            <option value="replied">Replied</option>
+            <option value="call_booked">Call Booked</option>
+            <option value="proposal_sent">Proposal Sent</option>
+            <option value="won">Won</option>
+            <option value="lost">Lost</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-value">Est. value ($/mo or project)</label>
+          <input type="number" id="f-value" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="f-followup">Next follow-up date</label>
+          <input type="date" id="f-followup">
+        </div>
+        <div class="field full">
+          <label for="f-notes">Notes / last touchpoint</label>
+          <textarea id="f-notes" placeholder="What's the latest?"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <div class="modal-left">
+          <button type="button" class="btn btn-primary" id="saveBtn" onclick="saveLead()">Save lead</button>
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        </div>
+        <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;" onclick="deleteLead()">Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <h2>Connection Settings</h2>
+    <p class="modal-sub">Sheet: <a href="https://docs.google.com/spreadsheets/d/13D2fdXyIC2xHjgWFPkPh3U8FYYocUrAtxN4muxIwnKs/edit" target="_blank" style="color:var(--teal);">Open Client Acquisition Dispatch - Data</a></p>
+    <div class="field full">
+      <label for="settingsUrlInput">Apps Script Web App URL</label>
+      <input type="text" id="settingsUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <div class="modal-actions">
+      <div class="modal-left">
+        <button type="button" class="btn btn-primary" onclick="saveSettingsUrl()">Save &amp; reconnect</button>
+        <button type="button" class="btn btn-ghost" onclick="closeSettings()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── CONFIG ─────────────────────────────────────────────────────────
+   Paste your deployed Apps Script Web App URL below (see setup-instructions.md)
+   BEFORE uploading this file to your host, so every device that opens the
+   hosted link connects automatically.
+*/
+const CONFIG = {
+  WEBAPP_URL: '' // e.g. 'https://script.google.com/macros/s/AKfycby9n2Tx6nJcOfnE8bn-dvQ1HhM7ervR5H4lEYC0gEOI8waybrL8-4NcLWn_GdEn-qoz_Q/exec'
+};
+/* ──────────────────────────────────────────────────────────────────*/
+
+const STAGES = [
+  {key:'prospect', label:'Prospect'},
+  {key:'contacted', label:'Contacted'},
+  {key:'replied', label:'Replied'},
+  {key:'call_booked', label:'Call Booked'},
+  {key:'proposal_sent', label:'Proposal Sent'},
+  {key:'won', label:'Won'},
+  {key:'lost', label:'Lost'},
+];
+
+let webappUrl = CONFIG.WEBAPP_URL || '';
+let leads = [];
+let editingId = null;
+
+function showToast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=>{ t.classList.remove('show'); }, 2600);
+}
+
+async function apiGet(){
+  const res = await fetch(webappUrl, { method: 'GET' });
+  if(!res.ok) throw new Error('Bad response');
+  return res.json();
+}
+async function apiPost(payload){
+  const res = await fetch(webappUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  if(!res.ok) throw new Error('Bad response');
+  return res.json();
+}
+
+function setConnected(isConnected){
+  const status = document.getElementById('connStatus');
+  const text = document.getElementById('connText');
+  if(isConnected){
+    status.classList.add('connected');
+    text.textContent = 'Connected — synced to Google Sheet';
+    document.getElementById('newLeadBtn').style.display = 'inline-block';
+    document.getElementById('ticker').style.display = 'flex';
+    document.getElementById('filterBar').style.display = 'flex';
+    document.getElementById('columns').style.display = 'grid';
+    document.getElementById('connectScreen').style.display = 'none';
+  }else{
+    status.classList.remove('connected');
+    text.textContent = 'Not connected';
+    document.getElementById('newLeadBtn').style.display = 'none';
+    document.getElementById('ticker').style.display = 'none';
+    document.getElementById('filterBar').style.display = 'none';
+    document.getElementById('columns').style.display = 'none';
+    document.getElementById('connectScreen').style.display = 'block';
+  }
+}
+
+async function init(){
+  if(!webappUrl){ setConnected(false); return; }
+  await refreshFromSheet();
+}
+
+async function refreshFromSheet(){
+  document.getElementById('loadingNote').style.display = 'block';
+  document.getElementById('connectErr').style.display = 'none';
+  try{
+    const data = await apiGet();
+    if(!data.ok) throw new Error(data.error || 'Unknown error');
+    leads = data.leads.map(l => ({...l, value: l.value === '' ? '' : Number(l.value)}));
+    setConnected(true);
+    renderBoard();
+  }catch(e){
+    setConnected(false);
+    document.getElementById('connectErr').style.display = 'block';
+    showToast('Could not load from Google Sheet', true);
+  }finally{
+    document.getElementById('loadingNote').style.display = 'none';
+  }
+}
+
+function connectWebApp(){
+  const url = document.getElementById('webappUrlInput').value.trim();
+  if(!url){ showToast('Paste a Web App URL first', true); return; }
+  webappUrl = url;
+  refreshFromSheet();
+}
+
+function openSettings(){
+  document.getElementById('settingsUrlInput').value = webappUrl;
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settingsOverlay').classList.remove('open'); }
+function saveSettingsUrl(){
+  const url = document.getElementById('settingsUrlInput').value.trim();
+  if(!url){ showToast('Paste a Web App URL first', true); return; }
+  webappUrl = url;
+  closeSettings();
+  refreshFromSheet();
+}
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(str){
+  if(!str) return '—';
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+function followUpClass(str){
+  if(!str) return '';
+  if(str < todayStr()) return 'overdue';
+  if(str === todayStr()) return 'due-today';
+  return '';
+}
+function followUpText(str){
+  if(!str) return '—';
+  if(str < todayStr()) return fmtDate(str) + ' (overdue)';
+  if(str === todayStr()) return 'Today';
+  return fmtDate(str);
+}
+function escapeHtml(str){
+  if(str === undefined || str === null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function populateFilterOptions(){
+  const markets = [...new Set(leads.map(l=>l.market).filter(Boolean))].sort();
+  const niches = [...new Set(leads.map(l=>l.niche).filter(Boolean))].sort();
+  const mSel = document.getElementById('filterMarket');
+  const nSel = document.getElementById('filterNiche');
+  const curM = mSel.value, curN = nSel.value;
+  mSel.innerHTML = '<option value="">All markets</option>' + markets.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  nSel.innerHTML = '<option value="">All niches</option>' + niches.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  mSel.value = curM; nSel.value = curN;
+}
+
+function getFiltered(){
+  const market = document.getElementById('filterMarket').value;
+  const niche = document.getElementById('filterNiche').value;
+  const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+  return leads.filter(l=>{
+    if(market && l.market !== market) return false;
+    if(niche && l.niche !== niche) return false;
+    if(search){
+      const hay = (l.business + ' ' + (l.contact||'')).toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTicker(){
+  const open = leads.filter(l=>l.stage!=='won' && l.stage!=='lost');
+  const pipelineValue = open.reduce((s,l)=>s + (Number(l.value)||0), 0);
+  const contactedPlus = leads.filter(l=>['contacted','replied','call_booked','proposal_sent','won','lost'].includes(l.stage));
+  const replied = leads.filter(l=>['replied','call_booked','proposal_sent','won','lost'].includes(l.stage));
+  const replyRate = contactedPlus.length ? Math.round((replied.length/contactedPlus.length)*100) : 0;
+  const callsBooked = leads.filter(l=>['call_booked','proposal_sent','won','lost'].includes(l.stage)).length;
+  const won = leads.filter(l=>l.stage==='won').length;
+  const lost = leads.filter(l=>l.stage==='lost').length;
+  const winRate = (won+lost) ? Math.round((won/(won+lost))*100) : 0;
+
+  document.getElementById('ticker').innerHTML = `
+    <div class="stat"><p class="stat-label">Open Leads</p><p class="stat-value">${open.length}</p></div>
+    <div class="stat"><p class="stat-label">Pipeline Value</p><p class="stat-value teal">$${pipelineValue.toLocaleString()}</p></div>
+    <div class="stat"><p class="stat-label">Reply Rate</p><p class="stat-value">${replyRate}%</p></div>
+    <div class="stat"><p class="stat-label">Calls Booked</p><p class="stat-value teal">${callsBooked}</p></div>
+    <div class="stat"><p class="stat-label">Win Rate</p><p class="stat-value green">${winRate}%</p></div>
+  `;
+}
+
+function renderBoard(){
+  populateFilterOptions();
+  renderTicker();
+  const filtered = getFiltered();
+  const cols = document.getElementById('columns');
+  cols.innerHTML = STAGES.map(stage=>{
+    const items = filtered.filter(l=>l.stage===stage.key);
+    return `
+      <div class="column" data-stage="${stage.key}">
+        <div class="column-head">
+          <span class="column-title">${stage.label}</span>
+          <span class="column-count">${items.length}</span>
+        </div>
+        <div class="card-stack">
+          ${items.length ? items.map(renderTicket).join('') : '<div class="empty-slot">No tickets</div>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderTicket(l){
+  const tilt = ((Number(l.ticketNo)||0) % 5 - 2) * 0.6;
+  const stageLabel = STAGES.find(s=>s.key===l.stage)?.label || l.stage;
+  return `
+    <div class="ticket" style="--tilt:${tilt}deg" onclick="openModal('${l.id}')">
+      <p class="ticket-no">WO-${String(l.ticketNo).padStart(4,'0')}</p>
+      <p class="ticket-biz">${escapeHtml(l.business)}</p>
+      <p class="ticket-sub">${escapeHtml(l.niche||'—')}${l.market ? ' · ' + escapeHtml(l.market) : ''}</p>
+      <hr class="ticket-divider">
+      <div class="ticket-row"><span class="k">Contact</span><span class="v">${escapeHtml(l.contact)||'—'}</span></div>
+      <div class="ticket-row"><span class="k">Follow-up</span><span class="v ${followUpClass(l.followUp)}">${followUpText(l.followUp)}</span></div>
+      <div class="ticket-row"><span class="k">Est. value</span><span class="v">${l.value ? '$'+Number(l.value).toLocaleString() : '—'}</span></div>
+      <span class="stamp ${l.stage}">${stageLabel.toUpperCase()}</span>
+    </div>
+  `;
+}
+
+function openModal(id){
+  editingId = id || null;
+  const overlay = document.getElementById('modalOverlay');
+  const deleteBtn = document.getElementById('deleteBtn');
+  if(id){
+    const l = leads.find(x=>x.id === id);
+    document.getElementById('modalTitle').textContent = 'Edit Lead';
+    document.getElementById('modalTicketNo').textContent = 'WO-' + String(l.ticketNo).padStart(4,'0');
+    document.getElementById('f-business').value = l.business || '';
+    document.getElementById('f-niche').value = l.niche || 'HVAC';
+    document.getElementById('f-market').value = l.market || '';
+    document.getElementById('f-contact').value = l.contact || '';
+    document.getElementById('f-contactinfo').value = l.contactInfo || '';
+    document.getElementById('f-channel').value = l.channel || 'Cold Email';
+    document.getElementById('f-stage').value = l.stage || 'prospect';
+    document.getElementById('f-value').value = l.value || '';
+    document.getElementById('f-followup').value = l.followUp || '';
+    document.getElementById('f-notes').value = l.notes || '';
+    deleteBtn.style.display = 'inline-block';
+  }else{
+    document.getElementById('modalTitle').textContent = 'New Lead';
+    document.getElementById('modalTicketNo').textContent = 'New ticket';
+    document.getElementById('leadForm').reset();
+    document.getElementById('f-stage').value = 'prospect';
+    deleteBtn.style.display = 'none';
+  }
+  overlay.classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  editingId = null;
+}
+
+async function saveLead(){
+  const business = document.getElementById('f-business').value.trim();
+  if(!business){ showToast('Business name is required', true); return; }
+  const data = {
+    id: editingId || undefined,
+    business,
+    niche: document.getElementById('f-niche').value,
+    market: document.getElementById('f-market').value.trim(),
+    contact: document.getElementById('f-contact').value.trim(),
+    contactInfo: document.getElementById('f-contactinfo').value.trim(),
+    channel: document.getElementById('f-channel').value,
+    stage: document.getElementById('f-stage').value,
+    value: document.getElementById('f-value').value,
+    followUp: document.getElementById('f-followup').value,
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+  try{
+    if(editingId){
+      const res = await apiPost({ action: 'update', lead: data });
+      if(!res.ok) throw new Error(res.error);
+      showToast('Ticket updated');
+    }else{
+      const res = await apiPost({ action: 'create', lead: data });
+      if(!res.ok) throw new Error(res.error);
+      showToast('New ticket created');
+    }
+    closeModal();
+    await refreshFromSheet();
+  }catch(e){
+    showToast('Save failed — check your connection', true);
+  }finally{
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save lead';
+  }
+}
+
+async function deleteLead(){
+  if(!editingId) return;
+  if(!confirm('Delete this ticket? This removes the row from your sheet.')) return;
+  try{
+    const res = await apiPost({ action: 'delete', id: editingId });
+    if(!res.ok) throw new Error(res.error);
+    showToast('Ticket deleted');
+    closeModal();
+    await refreshFromSheet();
+  }catch(e){
+    showToast('Delete failed — check your connection', true);
+  }
+}
+
+document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id === 'modalOverlay') closeModal(); });
+document.getElementById('settingsOverlay').addEventListener('click', (e)=>{ if(e.target.id === 'settingsOverlay') closeSettings(); });
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ closeModal(); closeSettings(); } });
+
+init();
+</script>
+</body>
+</html>
